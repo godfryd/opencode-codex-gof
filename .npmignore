@@ -1,0 +1,23 @@
+# Source and build inputs
+src/
+build.mjs
+tsconfig.json
+bunfig.toml
+*.tgz
+
+# Development metadata
+.github/
+.docs/
+.idea/
+CLAUDE.md
+
+# Local dependencies and logs
+node_modules/
+*.log
+.DS_Store
+
+# Alternate package-manager lockfiles
+bun.lockb
+package-lock.json
+pnpm-lock.yaml
+yarn.lock

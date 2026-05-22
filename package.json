@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "description": "OpenCode plugin for ChatGPT Plus/Pro OAuth with clean multi-account management",
   "license": "MIT",
-  "author": "Hwang Insung",
+  "author": "insd47",
   "type": "module",
   "main": "dist/server.js",
   "exports": {
@@ -12,7 +12,7 @@
   },
   "files": ["dist", "README.md", "LICENSE"],
   "scripts": {
-    "build": "node scripts/build.mjs",
+    "build": "node build.mjs",
     "typecheck": "tsc --noEmit"
   },
   "engines": {

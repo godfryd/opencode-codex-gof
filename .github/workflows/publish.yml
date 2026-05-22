@@ -1,0 +1,41 @@
+name: Publish
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Bun 설정
+        uses: oven-sh/setup-bun@v2
+
+      - name: Node.js 설정
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+
+      - name: 버전 설정
+        run: |
+          VERSION=${GITHUB_REF_NAME#v}
+          npm version "$VERSION" --no-git-tag-version
+
+      - name: 패키지 설치
+        run: bun install --frozen-lockfile
+
+      - name: 타입 검사
+        run: bun run typecheck
+
+      - name: 빌드
+        run: bun run build
+
+      - name: NPM에 배포
+        run: npm publish --provenance --access public

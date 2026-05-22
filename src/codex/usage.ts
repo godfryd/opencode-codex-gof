@@ -1,7 +1,7 @@
 import * as accounts from '../accounts/index.js';
 import type { Account, Usage, UsageWindow } from '../accounts/index.js';
 import { CODEX_USAGE_ENDPOINT } from '../config.js';
-import { ensureFreshTokens } from './fetch';
+import { ensureFreshTokens } from './fetch.js';
 
 interface RawWindow {
   used_percent?: number;

@@ -1,8 +1,8 @@
 import { createServer, type Server } from 'node:http';
 import { OAUTH_CALLBACK_PORT, OAUTH_CALLBACK_URI } from '../config.js';
-import type { PkceCodes } from './pkce';
-import { exchange } from './tokens';
-import type { TokenResponse } from './types';
+import type { PkceCodes } from './pkce.js';
+import { exchange } from './tokens.js';
+import type { TokenResponse } from './types.js';
 
 const SUCCESS_HTML = `<!doctype html><html><head><title>OpenCode Codex - Success</title>
 <style>body{font-family:system-ui,-apple-system,sans-serif;display:flex;justify-content:center;align-items:center;height:100vh;margin:0;background:#131010;color:#f1ecec}.c{text-align:center;padding:2rem}h1{margin-bottom:1rem}p{color:#b7b1b1}</style>

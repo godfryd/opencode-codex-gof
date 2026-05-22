@@ -4,9 +4,9 @@ import { For, Show, createMemo } from 'solid-js';
 import * as accounts from '../accounts/index.js';
 import type { Store } from '../accounts/types.js';
 import * as quota from '../quota/index.js';
-import { useAccountsStore } from './store-signal';
+import { useAccountsStore } from './store-signal.js';
 
-const BAR_WIDTH = 18;
+const BAR_WIDTH = 17;
 
 interface Line {
   label: string;
@@ -36,7 +36,7 @@ function WindowRow(props: { api: TuiPluginApi; line: Line }) {
   const parts = createMemo(() => quota.bar(props.line.remaining, BAR_WIDTH));
   const tail = createMemo(() => {
     const pct = Math.round(props.line.remaining);
-    return props.line.reset
+    return props.line.reset && pct < 100
       ? `  ${props.line.label} · ${pct}% (${props.line.reset})`
       : `  ${props.line.label} · ${pct}%`;
   });

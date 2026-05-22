@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 import { execSync } from 'node:child_process';
-import { readdirSync, renameSync, statSync } from 'node:fs';
+import { readdirSync, renameSync, rmSync, statSync } from 'node:fs';
 import path from 'node:path';
 
+rmSync('dist', { recursive: true, force: true });
 execSync('tsc', { stdio: 'inherit' });
 
 function walk(dir) {

@@ -2,7 +2,7 @@
 import type { TuiPluginApi } from '@opencode-ai/plugin/tui';
 import * as accounts from '../accounts/index.js';
 import * as quota from '../quota/index.js';
-import { activeNow } from './refresh';
+import { activeNow } from './refresh.js';
 
 export function showAccounts(api: TuiPluginApi): void {
   const dialog = api.ui.dialog;

@@ -1,6 +1,6 @@
 import { OAUTH_CLIENT_ID, OAUTH_ISSUER, OAUTH_SCOPE } from '../config.js';
-import type { PkceCodes } from './pkce';
-import type { TokenResponse } from './types';
+import type { PkceCodes } from './pkce.js';
+import type { TokenResponse } from './types.js';
 
 export function authorizeUrl(
   redirectUri: string,

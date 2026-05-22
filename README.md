@@ -93,9 +93,10 @@ src/
 ├── paths.ts                 XDG path resolver.
 │
 ├── accounts/                Multi-account store (the source of truth).
-│   ├── index.ts                  load, list, find, active, pick, save, remove,
-│   │                             activate, rateLimit, touch, updateTokens,
-│   │                             updateUsage, subscribe, snapshot
+│   ├── index.ts                  Public facade: load/list/save/activate/etc.
+│   ├── selectors.ts              Pure account selection helpers.
+│   ├── state.ts                  Cache, watcher, mutation queue, subscribers.
+│   ├── storage.ts                Atomic accounts.json I/O.
 │   └── types.ts                  Account, Store, Usage, UsageWindow
 │
 ├── auth/                    OpenCode auth.json glue.
@@ -172,7 +173,7 @@ you want strict per-request rotation, add it as a new picker in
 ```sh
 bun install
 bun run typecheck   # tsc --noEmit
-bun run build       # tsc + rename .jsx to .tsx in dist
+bun run build       # clean dist, tsc, rename .jsx to .tsx
 bun run watch       # tsc --watch
 ```
 

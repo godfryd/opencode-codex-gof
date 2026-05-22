@@ -4,7 +4,7 @@ import {
   OAUTH_DEVICE_POLLING_MARGIN_MS,
   OAUTH_ISSUER,
 } from '../config.js';
-import type { TokenResponse } from './types';
+import type { TokenResponse } from './types.js';
 
 export interface Challenge {
   device_auth_id: string;

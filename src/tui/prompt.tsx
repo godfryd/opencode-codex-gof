@@ -3,7 +3,7 @@ import type { TuiPluginApi } from '@opencode-ai/plugin/tui';
 import { createMemo } from 'solid-js';
 import * as accounts from '../accounts/index.js';
 import * as quota from '../quota/index.js';
-import { useAccountsStore } from './store-signal';
+import { useAccountsStore } from './store-signal.js';
 
 const MAX = 24;
 
@@ -16,7 +16,7 @@ export function PromptStatus(props: { api: TuiPluginApi }) {
   const active = createMemo(() => accounts.active(store()));
   const text = createMemo(() => {
     const a = active();
-    if (!a) return 'no account';
+    if (!a) return 'Codex: no account';
     const name = a.label || a.email || a.id;
     const plan = quota.plan(a);
     return plan ? `${trim(name)} (${plan})` : trim(name);

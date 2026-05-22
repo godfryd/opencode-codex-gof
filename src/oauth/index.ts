@@ -1,12 +1,12 @@
 import * as accounts from '../accounts/index.js';
 import type { Account } from '../accounts/types.js';
-import * as callback from './callback';
-import * as device from './device';
-import { identify } from './jwt';
-import * as paste from './paste';
-import { pkce, state } from './pkce';
-import { authorizeUrl, refresh as refreshTokens } from './tokens';
-import type { TokenResponse } from './types';
+import * as callback from './callback.js';
+import * as device from './device.js';
+import { identify } from './jwt.js';
+import * as paste from './paste.js';
+import { pkce, state } from './pkce.js';
+import { authorizeUrl, refresh as refreshTokens } from './tokens.js';
+import type { TokenResponse } from './types.js';
 
 type AuthorizeAuto = {
   url: string;
@@ -162,4 +162,4 @@ export function methods(): AuthMethod[] {
 }
 
 export { identify, refreshTokens as refresh };
-export type { TokenResponse } from './types';
+export type { TokenResponse } from './types.js';

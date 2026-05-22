@@ -2,7 +2,7 @@
 import type { TuiPlugin } from '@opencode-ai/plugin/tui';
 import { showAccounts } from './dialog';
 import { PromptStatus } from './prompt';
-import { start as startRefresh } from './refresh';
+import { start as startRefresh } from './refresh.js';
 import { Sidebar } from './sidebar';
 
 export const tui: TuiPlugin = async (api) => {

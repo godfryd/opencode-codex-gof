@@ -1,7 +1,7 @@
 import { OAUTH_CALLBACK_URI } from '../config.js';
-import type { PkceCodes } from './pkce';
-import { exchange } from './tokens';
-import type { TokenResponse } from './types';
+import type { PkceCodes } from './pkce.js';
+import { exchange } from './tokens.js';
+import type { TokenResponse } from './types.js';
 
 export async function fromUrl(
   callbackUrl: string,

@@ -1,8 +1,8 @@
 import * as accounts from '../accounts/index.js';
 import type { Account } from '../accounts/types.js';
 import { PROVIDER_ID } from '../config.js';
-import * as file from './file';
-import type { OauthEntry } from './types';
+import * as file from './file.js';
+import type { OauthEntry } from './types.js';
 
 const PER_ACCOUNT_PREFIX = `${PROVIDER_ID}/`;
 const LEGACY_PAREN_PREFIX = 'OpenAI ('; // earlier format: "OpenAI (email)"
@@ -34,15 +34,16 @@ function toEntry(account: Account): OauthEntry {
  * - Remove any orphaned per-account entries (including legacy formats).
  */
 export async function sync(): Promise<void> {
+  const store = await accounts.load();
   const all = await file.read();
   const writes: Record<string, OauthEntry> = {};
   const want = new Set<string>();
-  for (const account of accounts.list()) {
+  for (const account of store.accounts) {
     const k = keyFor(account);
     writes[k] = toEntry(account);
     want.add(k);
   }
-  const a = accounts.active();
+  const a = accounts.active(store);
   if (a) writes[PROVIDER_ID] = toEntry(a);
   const removes: string[] = [];
   for (const k of Object.keys(all)) {
@@ -65,7 +66,8 @@ export async function sync(): Promise<void> {
  * entries alone — `sync()` will rewrite the canonical.
  */
 export async function reconcile(): Promise<void> {
-  if (accounts.list().length === 0) return;
+  const store = await accounts.load();
+  if (store.accounts.length === 0) return;
   const all = await file.read();
   const present = new Set<string>();
   for (const [k, entry] of Object.entries(all)) {
@@ -75,7 +77,7 @@ export async function reconcile(): Promise<void> {
     const id = (entry as OauthEntry).accountId;
     if (id) present.add(id);
   }
-  const dropped = accounts.list().filter((a) => !present.has(a.id));
+  const dropped = store.accounts.filter((a) => !present.has(a.id));
   if (dropped.length === 0) {
     if (!(PROVIDER_ID in all)) await sync();
     return;
@@ -90,7 +92,7 @@ export async function reconcile(): Promise<void> {
  * the user doesn't lose access.
  */
 export async function bootstrap(): Promise<void> {
-  if (accounts.list().length > 0) return;
+  if ((await accounts.load()).accounts.length > 0) return;
   const all = await file.read();
   for (const [k, entry] of Object.entries(all)) {
     if (entry.type !== 'oauth') continue;

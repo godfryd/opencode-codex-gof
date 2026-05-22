@@ -6,13 +6,14 @@ const INTERVAL_MS = 5 * 60_000;
 const IDLE_DEBOUNCE_MS = 30_000;
 
 async function all(): Promise<void> {
+  const store = await accounts.load();
   await Promise.all(
-    accounts.list().map((a) => usage.fetch(a).catch(() => undefined)),
+    store.accounts.map((a) => usage.fetch(a).catch(() => undefined)),
   );
 }
 
 export async function activeNow(): Promise<void> {
-  const a = accounts.active();
+  const a = accounts.active(await accounts.load());
   if (a) await usage.fetch(a).catch(() => undefined);
 }
 

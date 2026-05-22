@@ -1,0 +1,45 @@
+{
+  "name": "opencode-codex",
+  "version": "0.1.0",
+  "description": "OpenCode plugin for ChatGPT Plus/Pro OAuth with clean multi-account management",
+  "license": "MIT",
+  "author": "Hwang Insung",
+  "type": "module",
+  "main": "dist/server.js",
+  "exports": {
+    ".": {
+      "types": "./dist/server.d.ts",
+      "import": "./dist/server.js"
+    },
+    "./tui": {
+      "types": "./dist/tui.d.ts",
+      "default": "./dist/tui.tsx"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc && (test -f dist/tui.jsx && mv -f dist/tui.jsx dist/tui.tsx || true)",
+    "watch": "tsc --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "peerDependencies": {
+    "@opencode-ai/plugin": "*",
+    "@opencode-ai/sdk": "*"
+  },
+  "devDependencies": {
+    "@opencode-ai/plugin": "*",
+    "@opencode-ai/sdk": "*",
+    "@opentui/core": "*",
+    "@opentui/solid": "*",
+    "@types/node": "^25.9.1",
+    "solid-js": "*",
+    "typescript": "^5.4.0"
+  }
+}

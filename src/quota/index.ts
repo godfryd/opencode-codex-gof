@@ -1,4 +1,4 @@
-import type { Account, UsageWindow } from '../accounts/index.js';
+import type { Account } from '../accounts/index.js';
 
 /**
  * Build a progress bar split into filled/empty halves. The caller renders
@@ -64,18 +64,6 @@ export function aggregate(
       windowMinutes,
       remaining: entry.totalLeft / entry.count,
     }));
-}
-
-/**
- * Worst (highest) used_percent across an account's windows, used to drive
- * threshold logic. Returns 0 when there's no usage data yet.
- */
-export function worstUsed(account: Account | undefined): number {
-  if (!account?.usage) return 0;
-  return Math.max(
-    ...account.usage.windows.map((w: UsageWindow) => w.usedPercent ?? 0),
-    0,
-  );
 }
 
 /** Friendly plan name. Returns undefined when no usage has been fetched. */

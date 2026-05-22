@@ -1,0 +1,57 @@
+/** @jsxImportSource @opentui/solid */
+import type { TuiPluginApi } from '@opencode-ai/plugin/tui';
+import * as accounts from '../accounts/index.js';
+import * as quota from '../quota/index.js';
+import { activeNow } from './refresh';
+
+export function showAccounts(api: TuiPluginApi): void {
+  const dialog = api.ui.dialog;
+  void accounts.load().then((store) => {
+    if (store.accounts.length === 0) {
+      dialog.replace(() => (
+        <api.ui.DialogAlert
+          title="Codex accounts"
+          message="No accounts yet. Use /connect → openai to add one."
+          onConfirm={() => dialog.clear()}
+        />
+      ));
+      return;
+    }
+    const activeId = store.active;
+    const now = Date.now();
+    dialog.replace(() => (
+      <api.ui.DialogSelect
+        title="Switch Codex account"
+        current={activeId}
+        options={store.accounts.map((account) => {
+          const status: string[] = [];
+          const plan = quota.plan(account);
+          if (plan) status.push(plan);
+          if (account.id === activeId) status.push('active');
+          if (account.rateLimitUntilMs && account.rateLimitUntilMs > now)
+            status.push('rate-limited');
+          const window5h = account.usage?.windows.find(
+            (w) => w.windowMinutes <= 600,
+          );
+          if (window5h) {
+            const left = quota.left(window5h.usedPercent);
+            if (left != null) status.push(`5h ${Math.round(left)}%`);
+          }
+          return {
+            title: account.label || account.email || account.id,
+            value: account.id,
+            description: status.join(' · ') || undefined,
+          };
+        })}
+        onSelect={async (option) => {
+          if (typeof option.value !== 'string') return;
+          if (option.value !== activeId) {
+            await accounts.activate(option.value);
+            void activeNow();
+          }
+          dialog.clear();
+        }}
+      />
+    ));
+  });
+}

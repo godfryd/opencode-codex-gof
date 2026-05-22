@@ -31,7 +31,7 @@ export function PromptStatus(props: { api: TuiPluginApi }) {
         {(s) => (
           <>
             <span style={{ fg: props.api.theme.current.accent }}>{s().name}</span>
-            {s().plan && ` (${s().plan})`}
+            {s().plan && ` · ${s().plan}`}
           </>
         )}
       </Show>

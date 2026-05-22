@@ -4,6 +4,10 @@
   "description": "OpenCode plugin for ChatGPT Plus/Pro OAuth with clean multi-account management",
   "license": "MIT",
   "author": "insd47",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/insd47/opencode-codex"
+  },
   "type": "module",
   "main": "dist/server.js",
   "publishConfig": {

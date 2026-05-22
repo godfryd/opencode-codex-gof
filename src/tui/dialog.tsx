@@ -18,7 +18,6 @@ export function showAccounts(api: TuiPluginApi): void {
       return;
     }
     const activeId = store.active;
-    const now = Date.now();
     dialog.replace(() => (
       <api.ui.DialogSelect
         title="Switch Codex account"
@@ -26,10 +25,7 @@ export function showAccounts(api: TuiPluginApi): void {
         options={store.accounts.map((account) => {
           const status: string[] = [];
           const plan = quota.plan(account);
-          if (plan) status.push(plan);
-          if (account.id === activeId) status.push('active');
-          if (account.rateLimitUntilMs && account.rateLimitUntilMs > now)
-            status.push('rate-limited');
+          if (plan) status.push(`(${plan})`);
           const window5h = account.usage?.windows.find(
             (w) => w.windowMinutes <= 600,
           );

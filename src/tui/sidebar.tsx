@@ -42,7 +42,7 @@ function WindowRow(props: { api: TuiPluginApi; line: Line }) {
   });
   return (
     <text wrapMode="none">
-      <span style={{ fg: theme().primary }}>{parts().filled}</span>
+      <span style={{ fg: theme().accent }}>{parts().filled}</span>
       <span style={{ fg: theme().borderSubtle }}>{parts().empty}</span>
       <span style={{ fg: theme().textMuted }}>{tail()}</span>
     </text>

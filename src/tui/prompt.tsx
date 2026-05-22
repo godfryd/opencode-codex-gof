@@ -1,6 +1,6 @@
 /** @jsxImportSource @opentui/solid */
 import type { TuiPluginApi } from '@opencode-ai/plugin/tui';
-import { createMemo } from 'solid-js';
+import { Show, createMemo } from 'solid-js';
 import * as accounts from '../accounts/index.js';
 import * as quota from '../quota/index.js';
 import { useAccountsStore } from './store-signal.js';
@@ -14,12 +14,11 @@ function trim(label: string, max = MAX): string {
 export function PromptStatus(props: { api: TuiPluginApi }) {
   const store = useAccountsStore();
   const active = createMemo(() => accounts.active(store()));
-  const text = createMemo(() => {
+  const status = createMemo(() => {
     const a = active();
-    if (!a) return 'Codex: no account';
+    if (!a) return;
     const name = a.label || a.email || a.id;
-    const plan = quota.plan(a);
-    return plan ? `${trim(name)} (${plan})` : trim(name);
+    return { name: trim(name), plan: quota.plan(a) };
   });
   return (
     <text
@@ -28,7 +27,14 @@ export function PromptStatus(props: { api: TuiPluginApi }) {
       truncate
       wrapMode="none"
     >
-      {text()}
+      <Show when={status()} fallback="no Codex account">
+        {(s) => (
+          <>
+            <span style={{ fg: props.api.theme.current.accent }}>{s().name}</span>
+            {s().plan && ` ${s().plan}`}
+          </>
+        )}
+      </Show>
     </text>
   );
 }

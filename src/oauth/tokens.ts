@@ -43,9 +43,13 @@ export async function exchange(
   return response.json() as Promise<TokenResponse>;
 }
 
-export async function refresh(refreshToken: string): Promise<TokenResponse> {
+export async function refresh(
+  refreshToken: string,
+  signal?: AbortSignal,
+): Promise<TokenResponse> {
   const response = await fetch(`${OAUTH_ISSUER}/oauth/token`, {
     method: 'POST',
+    signal,
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
       grant_type: 'refresh_token',

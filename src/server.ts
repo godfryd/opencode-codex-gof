@@ -11,7 +11,11 @@ const plugin: Plugin = async (_) => {
   await auth.reconcile();
   await auth.sync();
 
-  accounts.subscribe(() => {
+  let lastAuthFingerprint = auth.fingerprint(accounts.snapshot());
+  accounts.subscribe((store) => {
+    const nextAuthFingerprint = auth.fingerprint(store);
+    if (nextAuthFingerprint === lastAuthFingerprint) return;
+    lastAuthFingerprint = nextAuthFingerprint;
     void auth.sync();
   });
 

@@ -1,7 +1,7 @@
 import * as accounts from '../accounts/index.js';
 import type { Account, Usage, UsageWindow } from '../accounts/index.js';
 import { CODEX_USAGE_ENDPOINT } from '../config.js';
-import { ensureFreshTokens } from './fetch.js';
+import * as token from './token.js';
 
 interface RawWindow {
   used_percent?: number;
@@ -71,11 +71,11 @@ export async function fetch(account: Account): Promise<Usage | undefined> {
   const existing = inflight.get(account.id);
   if (existing) return existing;
   const promise = (async () => {
-    const fresh = await ensureFreshTokens(account);
+    if (!token.isFresh(account)) return undefined;
     const response = await globalThis.fetch(CODEX_USAGE_ENDPOINT, {
       headers: {
-        authorization: `Bearer ${fresh.access}`,
-        'ChatGPT-Account-Id': fresh.id,
+        authorization: `Bearer ${account.access}`,
+        'ChatGPT-Account-Id': account.id,
         'User-Agent': 'opencode-codex/0.1',
         accept: 'application/json',
       },

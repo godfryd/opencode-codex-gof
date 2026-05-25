@@ -1,37 +1,7 @@
 import * as accounts from '../accounts/index.js';
 import type { Account } from '../accounts/types.js';
 import { CODEX_ENDPOINT } from '../config.js';
-import { refresh as refreshTokens } from '../oauth/index.js';
-
-const REFRESH_SKEW_MS = 60_000;
-
-const inflightRefresh = new Map<string, Promise<Account>>();
-
-async function ensureFreshTokens(
-  account: Account,
-  now = Date.now(),
-): Promise<Account> {
-  if (account.access && account.expires - REFRESH_SKEW_MS > now) return account;
-  const existing = inflightRefresh.get(account.id);
-  if (existing) return existing;
-  const promise = (async () => {
-    const tokens = await refreshTokens(account.refresh);
-    const expires = now + (tokens.expires_in ?? 3600) * 1000;
-    await accounts.updateTokens(account.id, {
-      access: tokens.access_token,
-      refresh: tokens.refresh_token,
-      expires,
-    });
-    return {
-      ...account,
-      access: tokens.access_token,
-      refresh: tokens.refresh_token,
-      expires,
-    };
-  })().finally(() => inflightRefresh.delete(account.id));
-  inflightRefresh.set(account.id, promise);
-  return promise;
-}
+import * as token from './token.js';
 
 function isCodexRoute(url: URL): boolean {
   return (
@@ -76,8 +46,6 @@ function buildHeaders(
   return headers;
 }
 
-export { ensureFreshTokens };
-
 /**
  * Build a fetch implementation that proxies requests through the picked
  * Codex account. The returned function has the standard `fetch` signature.
@@ -97,7 +65,7 @@ export function create(): typeof fetch {
         },
       );
     }
-    const fresh = await ensureFreshTokens(account);
+    const fresh = await token.ensure(account, init?.signal ?? undefined);
     const parsed =
       input instanceof URL
         ? input

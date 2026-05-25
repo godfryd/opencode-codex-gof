@@ -1,5 +1,5 @@
 import * as accounts from '../accounts/index.js';
-import type { Account } from '../accounts/types.js';
+import type { Account, Store } from '../accounts/types.js';
 import { PROVIDER_ID } from '../config.js';
 import * as file from './file.js';
 import type { OauthEntry } from './types.js';
@@ -25,6 +25,19 @@ function toEntry(account: Account): OauthEntry {
     expires: account.expires,
     accountId: account.id,
   };
+}
+
+export function fingerprint(store: Store): string {
+  return JSON.stringify({
+    active: store.active,
+    accounts: store.accounts.map((account) => ({
+      id: account.id,
+      email: account.email,
+      access: account.access,
+      refresh: account.refresh,
+      expires: account.expires,
+    })),
+  });
 }
 
 /**

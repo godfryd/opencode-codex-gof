@@ -65,10 +65,10 @@ account. Repeat for additional accounts.
 | Remove | `opencode auth logout`         |
 
 Under the hood the plugin keeps a `openai/<email>` entry in `auth.json` per
-connected account and mirrors the currently active one to the canonical
-`openai` key — so OpenCode's provider system sees a normal OAuth credential
-while the plugin manages the broader set. This is intentional: it lets the
-plugin lean on OpenCode's standard UX surfaces instead of replacing them.
+connected account and keeps the canonical `openai` key as a compatibility
+mirror — so OpenCode's provider system sees a normal OAuth credential while the
+plugin reads the account pool from OpenCode's standard auth store. Account
+switching inside an open TUI process is kept in memory and is not persisted.
 
 ## Quota display
 
@@ -81,7 +81,7 @@ The sidebar shows two sections when multiple accounts are connected:
 
 When only one account is connected, just **Quota** is shown.
 
-Usage data is fetched in the background from `chatgpt.com/backend-api/wham/usage`:
+Usage data is fetched in memory from `chatgpt.com/backend-api/wham/usage`:
 
 - once on TUI startup,
 - on every `session.idle` event (debounced),
@@ -91,10 +91,10 @@ Usage data is fetched in the background from `chatgpt.com/backend-api/wham/usage
 
 | Path                                          | Purpose                                                                                                                                                                 |
 |-----------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `$XDG_DATA_HOME/opencode/codex/accounts.json` | Plugin's account store — source of truth for token data and usage cache.                                                                                                |
-| `$XDG_DATA_HOME/opencode/auth.json`           | OpenCode's credential file. One entry per account at `openai/<email>` plus the active mirror at `openai`. Written by the plugin to stay in sync with the account store. |
+| `$XDG_DATA_HOME/opencode/auth.json`           | OpenCode's credential file and the source of truth for Codex OAuth tokens. One entry per account at `openai/<email>` plus the compatibility mirror at `openai`.         |
 
-Both files are written atomically with `0600` permissions.
+Quota, temporary rate-limit state, and the TUI account selection are process
+memory only. They are refreshed again after restarting OpenCode.
 
 ## Troubleshooting
 

@@ -7,6 +7,10 @@ export async function load(): Promise<Store> {
   return state.load();
 }
 
+export async function reload(): Promise<Store> {
+  return state.reload();
+}
+
 export function snapshot(): Store {
   return state.snapshot();
 }
@@ -29,8 +33,10 @@ export function active(store?: Store): Account | undefined {
  * other eligible account exists, so the caller surfaces the upstream error
  * rather than a phantom "no account".
  */
-export function pick(now = Date.now()): Account | undefined {
-  return selectors.pick(snapshot(), now);
+export function pick(
+  options: selectors.PickOptions | number = Date.now(),
+): Account | undefined {
+  return selectors.pick(snapshot(), options);
 }
 
 export async function save(
@@ -70,21 +76,21 @@ export async function activate(id: string): Promise<Store> {
 }
 
 export async function rateLimit(id: string, untilMs: number): Promise<Store> {
-  return state.mutate((s) => {
+  return state.mutateRuntime((s) => {
     const account = s.accounts.find((a) => a.id === id);
     if (account) account.rateLimitUntilMs = untilMs;
   });
 }
 
 export async function clearRateLimit(id: string): Promise<Store> {
-  return state.mutate((s) => {
+  return state.mutateRuntime((s) => {
     const account = s.accounts.find((a) => a.id === id);
     if (account) account.rateLimitUntilMs = undefined;
   });
 }
 
 export async function touch(id: string): Promise<void> {
-  await state.mutate((s) => {
+  await state.mutateRuntime((s) => {
     const account = s.accounts.find((a) => a.id === id);
     if (account) account.lastUsedAt = Date.now();
   });
@@ -105,7 +111,7 @@ export async function updateTokens(
 }
 
 export async function updateUsage(id: string, usage: Usage): Promise<Store> {
-  return state.mutate((s) => {
+  return state.mutateRuntime((s) => {
     const account = s.accounts.find((a) => a.id === id);
     if (account) account.usage = usage;
   });

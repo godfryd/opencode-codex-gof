@@ -1,7 +1,7 @@
 /** @jsxImportSource @opentui/solid */
 import type { TuiPluginApi } from '@opencode-ai/plugin/tui';
 import { Show, createMemo } from 'solid-js';
-import * as accounts from '../accounts/index.js';
+import * as selection from '../accounts/selection.js';
 import * as quota from '../quota/index.js';
 import { useAccountsStore } from './store-signal.js';
 
@@ -13,7 +13,7 @@ function trim(label: string, max = MAX): string {
 
 export function PromptStatus(props: { api: TuiPluginApi }) {
   const store = useAccountsStore();
-  const active = createMemo(() => accounts.active(store()));
+  const active = createMemo(() => selection.active(store()));
   const status = createMemo(() => {
     const a = active();
     if (!a) return;

@@ -16,7 +16,3 @@ export function dataDir(): string {
   }
   return path.join(os.homedir(), '.opencode', 'codex');
 }
-
-export function accountsFile(): string {
-  return path.join(dataDir(), 'accounts.json');
-}

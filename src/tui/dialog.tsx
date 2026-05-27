@@ -1,6 +1,7 @@
 /** @jsxImportSource @opentui/solid */
 import type { TuiPluginApi } from '@opencode-ai/plugin/tui';
 import * as accounts from '../accounts/index.js';
+import * as selection from '../accounts/selection.js';
 import * as quota from '../quota/index.js';
 import { activeNow } from './refresh.js';
 
@@ -17,7 +18,7 @@ export function showAccounts(api: TuiPluginApi): void {
       ));
       return;
     }
-    const activeId = store.active;
+    const activeId = selection.active(store)?.id;
     dialog.replace(() => (
       <api.ui.DialogSelect
         title="Switch Codex account"
@@ -42,7 +43,7 @@ export function showAccounts(api: TuiPluginApi): void {
         onSelect={async (option) => {
           if (typeof option.value !== 'string') return;
           if (option.value !== activeId) {
-            await accounts.activate(option.value);
+            selection.select(option.value);
             void activeNow();
           }
           dialog.clear();

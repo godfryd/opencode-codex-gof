@@ -1,7 +1,7 @@
 /** @jsxImportSource @opentui/solid */
 import type { TuiPluginApi } from '@opencode-ai/plugin/tui';
 import { For, Show, createMemo } from 'solid-js';
-import * as accounts from '../accounts/index.js';
+import * as selection from '../accounts/selection.js';
 import type { Store } from '../accounts/types.js';
 import * as quota from '../quota/index.js';
 import { useAccountsStore } from './store-signal.js';
@@ -15,7 +15,7 @@ interface Line {
 }
 
 function activeLines(store: Store): Line[] {
-  const a = accounts.active(store);
+  const a = selection.active(store);
   if (!a?.usage) return [];
   return a.usage.windows.map((w) => ({
     label: quota.label(w.windowMinutes),
@@ -53,7 +53,7 @@ export function Sidebar(props: { api: TuiPluginApi }) {
   const store = useAccountsStore();
   const theme = () => props.api.theme.current;
   const list = createMemo(() => store().accounts);
-  const active = createMemo(() => accounts.active(store()));
+  const active = createMemo(() => selection.active(store()));
   const showActive = createMemo(() => !!active());
   const showPool = createMemo(() => list().length > 1);
   const activeRows = createMemo(() => activeLines(store()));

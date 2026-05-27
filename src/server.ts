@@ -7,8 +7,6 @@ import * as oauth from './oauth/index.js';
 
 const plugin: Plugin = async (_) => {
   await accounts.load();
-  await auth.bootstrap();
-  await auth.reconcile();
   await auth.sync();
 
   let lastAuthFingerprint = auth.fingerprint(accounts.snapshot());
@@ -32,7 +30,7 @@ const plugin: Plugin = async (_) => {
     async event({ event }) {
       const type = (event as { type?: string }).type;
       if (type === 'session.created' || type === 'session.idle') {
-        await auth.reconcile();
+        await auth.sync();
       }
     },
   };

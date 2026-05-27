@@ -1,12 +1,18 @@
 import * as accounts from '../accounts/index.js';
+import * as selection from '../accounts/selection.js';
 import type { Account } from '../accounts/types.js';
 import { CODEX_ENDPOINT } from '../config.js';
 import * as token from './token.js';
 import * as trace from './trace.js';
 
-const HEADER_TIMEOUT_MS = 15_000;
-const HEADER_FETCH_ATTEMPTS = 2;
+const HEADER_TIMEOUT_MS = 25_000;
+const HEADER_FETCH_ATTEMPTS = 3;
+const HEADER_TIMEOUT_COOLDOWN_MS = 60_000;
+const RETRY_JITTER_MIN_MS = 250;
+const RETRY_JITTER_MAX_MS = 1_000;
 const STREAM_PROGRESS_INTERVAL_MS = 10_000;
+
+const headerTimeoutUntil = new Map<string, number>();
 
 function isCodexRoute(url: URL): boolean {
   return (
@@ -27,24 +33,20 @@ function parseRetryAfter(
   return undefined;
 }
 
-function buildHeaders(
+function requestHeaders(
+  input: RequestInfo | URL,
   init: RequestInit | undefined,
-  account: Account,
 ): Headers {
-  const headers = new Headers();
-  if (init?.headers) {
-    if (init.headers instanceof Headers) {
-      init.headers.forEach((value, key) => headers.set(key, value));
-    } else if (Array.isArray(init.headers)) {
-      for (const [key, value] of init.headers) {
-        if (value !== undefined) headers.set(key, String(value));
-      }
-    } else {
-      for (const [key, value] of Object.entries(init.headers)) {
-        if (value !== undefined) headers.set(key, String(value));
-      }
-    }
-  }
+  const headers = new Headers(
+    input instanceof Request ? input.headers : undefined,
+  );
+  if (!init?.headers) return headers;
+  new Headers(init.headers).forEach((value, key) => headers.set(key, value));
+  return headers;
+}
+
+function buildHeaders(source: Headers, account: Account): Headers {
+  const headers = new Headers(source);
   headers.delete('authorization');
   headers.set('authorization', `Bearer ${account.access}`);
   headers.set('ChatGPT-Account-Id', account.id);
@@ -61,6 +63,28 @@ function contentLength(headers: Headers): string | undefined {
   return headers.get('content-length') ?? undefined;
 }
 
+function requestBodyMetadata(
+  init: RequestInit | undefined,
+): Record<string, unknown> {
+  const body = init?.body;
+  if (typeof body !== 'string') return {};
+  const metadata: Record<string, unknown> = {
+    bodyBytes: new TextEncoder().encode(body).byteLength,
+  };
+  try {
+    const parsed = JSON.parse(body) as Record<string, unknown>;
+    if (typeof parsed.model === 'string') metadata.model = parsed.model;
+    if (typeof parsed.stream === 'boolean') metadata.stream = parsed.stream;
+    if (Array.isArray(parsed.input)) metadata.inputItems = parsed.input.length;
+    if (Array.isArray(parsed.messages)) metadata.messages = parsed.messages.length;
+    if (Array.isArray(parsed.tools)) metadata.tools = parsed.tools.length;
+    if (parsed.reasoning && typeof parsed.reasoning === 'object') {
+      metadata.reasoning = true;
+    }
+  } catch {}
+  return metadata;
+}
+
 function timeoutError(ms: number): DOMException {
   return new DOMException(
     `Codex upstream did not return headers within ${ms}ms`,
@@ -75,6 +99,39 @@ function isTimeoutError(err: unknown): boolean {
 function canRetry(init: RequestInit | undefined): boolean {
   const body = init?.body;
   return !(typeof ReadableStream !== 'undefined' && body instanceof ReadableStream);
+}
+
+function retryDelayMs(): number {
+  return Math.floor(
+    RETRY_JITTER_MIN_MS +
+      Math.random() * (RETRY_JITTER_MAX_MS - RETRY_JITTER_MIN_MS),
+  );
+}
+
+function delay(ms: number, signal: AbortSignal | undefined): Promise<void> {
+  if (!signal) return new Promise((resolve) => setTimeout(resolve, ms));
+  if (signal.aborted) return Promise.reject(signal.reason);
+  return new Promise((resolve, reject) => {
+    let timer: ReturnType<typeof setTimeout>;
+    const onAbort = () => {
+      clearTimeout(timer);
+      reject(signal.reason);
+    };
+    timer = setTimeout(() => {
+      signal.removeEventListener('abort', onAbort);
+      resolve();
+    }, ms);
+    signal.addEventListener('abort', onAbort, { once: true });
+  });
+}
+
+function timeoutExcluded(now: number, requestExcluded: Set<string>): Set<string> {
+  const excluded = new Set(requestExcluded);
+  for (const [accountID, until] of headerTimeoutUntil) {
+    if (until <= now) headerTimeoutUntil.delete(accountID);
+    else excluded.add(accountID);
+  }
+  return excluded;
 }
 
 function fetchSignal(
@@ -174,49 +231,41 @@ async function fetchHeaders(
   init: RequestInit | undefined,
   headers: Headers,
   context: trace.Context | undefined,
+  attempt: number,
+  attempts: number,
+  account: Account,
+  metadata: Record<string, unknown>,
 ): Promise<{ response: Response; cleanup: () => void }> {
-  const attempts = canRetry(init) ? HEADER_FETCH_ATTEMPTS : 1;
-  let lastError: unknown;
+  trace.log(context, 'upstream.fetch.start', {
+    attempt,
+    attempts,
+    account: trace.accountId(account.id),
+    headerTimeoutMs: HEADER_TIMEOUT_MS,
+    contentLength: contentLength(headers),
+    contentType: headers.get('content-type') ?? undefined,
+    ...metadata,
+  });
 
-  for (let attempt = 1; attempt <= attempts; attempt++) {
-    trace.log(context, 'upstream.fetch.start', {
-      attempt,
-      attempts,
-      headerTimeoutMs: HEADER_TIMEOUT_MS,
-      contentLength: contentLength(headers),
-      contentType: headers.get('content-type') ?? undefined,
+  const upstreamSignal = fetchSignal(init?.signal ?? undefined, HEADER_TIMEOUT_MS);
+  try {
+    const response = await fetch(target, {
+      ...init,
+      signal: upstreamSignal.signal,
+      headers,
     });
-
-    const upstreamSignal = fetchSignal(init?.signal ?? undefined, HEADER_TIMEOUT_MS);
-    try {
-      const response = await fetch(target, {
-        ...init,
-        signal: upstreamSignal.signal,
-        headers,
-      });
-      upstreamSignal.clearTimeout();
-      trace.log(context, 'upstream.headers', {
-        attempt,
-        status: response.status,
-        contentType: response.headers.get('content-type') ?? undefined,
-      });
-      return { response, cleanup: upstreamSignal.cleanup };
-    } catch (err) {
-      upstreamSignal.cleanup();
-      lastError = err;
-      const retry =
-        attempt < attempts && isTimeoutError(err) && !init?.signal?.aborted;
-      trace.log(context, retry ? 'upstream.fetch.retry' : 'upstream.fetch.error', {
-        attempt,
-        attempts,
-        error: trace.error(err),
-      });
-      if (retry) continue;
-      throw err;
-    }
+    upstreamSignal.clearTimeout();
+    trace.log(context, 'upstream.headers', {
+      attempt,
+      account: trace.accountId(account.id),
+      status: response.status,
+      contentType: response.headers.get('content-type') ?? undefined,
+      cfRay: response.headers.get('cf-ray') ?? undefined,
+    });
+    return { response, cleanup: upstreamSignal.cleanup };
+  } catch (err) {
+    upstreamSignal.cleanup();
+    throw err;
   }
-
-  throw lastError;
 }
 
 /**
@@ -234,27 +283,18 @@ export function create(): typeof fetch {
         : new URL(typeof input === 'string' ? input : input.url);
     const isCodex = isCodexRoute(parsed);
     const context = isCodex ? trace.create() : undefined;
-    const account = accounts.pick();
-    if (!account) {
-      trace.log(context, 'request.no_account', { sourcePath: parsed.pathname });
-      return new Response(
-        JSON.stringify({ error: { message: 'No Codex account configured' } }),
-        {
-          status: 401,
-          headers: { 'Content-Type': 'application/json' },
-        },
-      );
-    }
+    const originalHeaders = requestHeaders(input, init);
+    const metadata = requestBodyMetadata(init);
     const target = isCodexRoute(parsed) ? new URL(CODEX_ENDPOINT) : parsed;
     trace.log(context, 'request.start', {
       method: methodFor(input, init),
       sourcePath: parsed.pathname,
       targetHost: target.host,
       targetPath: target.pathname,
-      account: trace.accountId(account.id),
-      tokenFresh: token.isFresh(account),
+      processSelected: !!selection.id(),
       signalProvided: !!init?.signal,
       aborted: init?.signal?.aborted ?? false,
+      ...metadata,
     });
 
     const onAbort = () => {
@@ -265,30 +305,97 @@ export function create(): typeof fetch {
     init?.signal?.addEventListener('abort', onAbort, { once: true });
     const cleanup = () => init?.signal?.removeEventListener('abort', onAbort);
 
-    let fresh: Account;
-    try {
-      trace.log(context, 'token.ensure.start');
-      fresh = await token.ensure(account, init?.signal ?? undefined);
-      trace.log(context, 'token.ensure.end', {
-        account: trace.accountId(fresh.id),
-        refreshed: fresh.access !== account.access || fresh.expires !== account.expires,
-      });
-    } catch (err) {
-      cleanup();
-      trace.log(context, 'token.ensure.error', { error: trace.error(err) });
-      throw err;
+    const attempts = canRetry(init) ? HEADER_FETCH_ATTEMPTS : 1;
+    const requestTimedOutAccounts = new Set<string>();
+    let response: Response | undefined;
+    let upstreamCleanup: (() => void) | undefined;
+    let fresh: Account | undefined;
+    let lastError: unknown;
+
+    for (let attempt = 1; attempt <= attempts; attempt++) {
+      const excluded = timeoutExcluded(Date.now(), requestTimedOutAccounts);
+      const account = selection.pick(accounts.snapshot(), { exclude: excluded });
+      if (!account) {
+        cleanup();
+        trace.log(context, 'request.no_account', { sourcePath: parsed.pathname });
+        return new Response(
+          JSON.stringify({ error: { message: 'No Codex account configured' } }),
+          {
+            status: 401,
+            headers: { 'Content-Type': 'application/json' },
+          },
+        );
+      }
+
+      try {
+        trace.log(context, 'token.ensure.start', {
+          attempt,
+          account: trace.accountId(account.id),
+          tokenFresh: token.isFresh(account),
+        });
+        fresh = await token.ensure(account, init?.signal ?? undefined);
+        trace.log(context, 'token.ensure.end', {
+          attempt,
+          account: trace.accountId(fresh.id),
+          refreshed:
+            fresh.access !== account.access || fresh.expires !== account.expires,
+        });
+      } catch (err) {
+        cleanup();
+        trace.log(context, 'token.ensure.error', { error: trace.error(err) });
+        throw err;
+      }
+
+      const attemptAccount = fresh;
+      const headers = buildHeaders(originalHeaders, attemptAccount);
+      try {
+        const result = await fetchHeaders(
+          target,
+          init,
+          headers,
+          context,
+          attempt,
+          attempts,
+          attemptAccount,
+          metadata,
+        );
+        response = result.response;
+        upstreamCleanup = result.cleanup;
+        headerTimeoutUntil.delete(attemptAccount.id);
+        break;
+      } catch (err) {
+        lastError = err;
+        if (isTimeoutError(err)) {
+          requestTimedOutAccounts.add(attemptAccount.id);
+          headerTimeoutUntil.set(
+            attemptAccount.id,
+            Date.now() + HEADER_TIMEOUT_COOLDOWN_MS,
+          );
+        }
+        const retry =
+          attempt < attempts && isTimeoutError(err) && !init?.signal?.aborted;
+        trace.log(context, retry ? 'upstream.fetch.retry' : 'upstream.fetch.error', {
+          attempt,
+          attempts,
+          account: trace.accountId(attemptAccount.id),
+          error: trace.error(err),
+        });
+        if (!retry) {
+          cleanup();
+          throw err;
+        }
+        try {
+          await delay(retryDelayMs(), init?.signal ?? undefined);
+        } catch (delayErr) {
+          cleanup();
+          throw delayErr;
+        }
+      }
     }
 
-    const headers = buildHeaders(init, fresh);
-    let response: Response;
-    let upstreamCleanup: () => void;
-    try {
-      const result = await fetchHeaders(target, init, headers, context);
-      response = result.response;
-      upstreamCleanup = result.cleanup;
-    } catch (err) {
+    if (!response || !upstreamCleanup || !fresh) {
       cleanup();
-      throw err;
+      throw lastError;
     }
 
     if (response.status === 429 || response.status === 402) {

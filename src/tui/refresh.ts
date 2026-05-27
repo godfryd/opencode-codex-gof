@@ -1,5 +1,6 @@
 import type { TuiPluginApi } from '@opencode-ai/plugin/tui';
 import * as accounts from '../accounts/index.js';
+import * as selection from '../accounts/selection.js';
 import * as usage from '../codex/usage.js';
 
 const INTERVAL_MS = 5 * 60_000;
@@ -13,7 +14,7 @@ async function all(): Promise<void> {
 }
 
 export async function activeNow(): Promise<void> {
-  const a = accounts.active(await accounts.load());
+  const a = selection.active(await accounts.load());
   if (a) await usage.fetch(a).catch(() => undefined);
 }
 

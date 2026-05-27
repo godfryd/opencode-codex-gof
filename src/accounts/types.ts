@@ -17,6 +17,7 @@ export interface Account {
   refresh: string;
   access: string;
   expires: number;
+  enterpriseUrl?: string;
   addedAt: number;
   lastUsedAt?: number;
   rateLimitUntilMs?: number;

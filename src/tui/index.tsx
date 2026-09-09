@@ -4,12 +4,14 @@ import * as accounts from '../accounts/index.js';
 import * as selection from '../accounts/selection.js';
 import { showAccounts } from './dialog.js';
 import { PromptStatus } from './prompt.js';
+import { initializeQuotaPlans, showQuotaPlans } from './quota-plan.js';
 import { start as startRefresh } from './refresh.js';
 import { Sidebar } from './sidebar.js';
 
 export const tui: TuiPlugin = async (api) => {
   await accounts.load();
   await selection.load();
+  initializeQuotaPlans(api);
 
   api.slots.register({
     order: 250,
@@ -40,6 +42,16 @@ export const tui: TuiPlugin = async (api) => {
             api,
             typeof sessionID === 'string' ? sessionID : undefined,
           );
+        },
+      },
+      {
+        namespace: 'palette',
+        name: 'codex.quota.plan',
+        title: 'Configure Codex quota',
+        category: 'Codex',
+        slashName: 'codex-quota',
+        run() {
+          showQuotaPlans(api);
         },
       },
     ],

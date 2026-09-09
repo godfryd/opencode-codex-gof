@@ -79,7 +79,9 @@ export function Sidebar(props: { api: TuiPluginApi; sessionID: string }) {
   return (
     <text
       ref={(text: TextRenderable) =>
-        bindAccountsText(props.api, text, content, props.sessionID)
+        bindAccountsText(props.api, text, content, props.sessionID, [
+          quota.subscribeMultiplierOverrides,
+        ])
       }
       selectable={false}
       wrapMode="none"

@@ -31,7 +31,9 @@ export function PromptStatus(props: { api: TuiPluginApi; sessionID: string }) {
   return (
     <text
       ref={(text: TextRenderable) =>
-        bindAccountsText(props.api, text, content, props.sessionID)
+        bindAccountsText(props.api, text, content, props.sessionID, [
+          quota.subscribeMultiplierOverrides,
+        ])
       }
       fg={props.api.theme.current.textMuted}
       selectable={false}

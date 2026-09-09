@@ -103,20 +103,10 @@ export function showAccounts(api: TuiPluginApi, sessionID?: string): void {
         title="Switch Codex account"
         current={activeId}
         options={store.accounts.map((account) => {
-          const status: string[] = [];
-          const plan = quota.plan(account);
-          if (plan) status.push(`(${plan})`);
-          const window5h = account.usage?.windows.find(
-            (w) => w.windowMinutes <= 600,
-          );
-          if (window5h) {
-            const left = quota.left(window5h.usedPercent);
-            if (left != null) status.push(`5h ${Math.round(left)}%`);
-          }
           return {
             title: accountName(account),
             value: account.id,
-            description: status.join(' · ') || undefined,
+            description: quota.windowStatus(account).join(' · ') || undefined,
           };
         })}
         onSelect={async (option) => {

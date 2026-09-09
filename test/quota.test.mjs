@@ -9,6 +9,7 @@ import {
   plan,
   planMultiplier,
   subscribeMultiplierOverrides,
+  windowStatus,
 } from '../dist/quota/index.js';
 
 function account({ id, email, planType, windows }) {
@@ -174,4 +175,29 @@ test('notifies subscribers when stored overrides change', () => {
     unsubscribe();
     configureMultiplierOverrides({});
   }
+});
+
+test('windowStatus lists plan plus every window shortest-first', () => {
+  const plus = account({
+    id: 'plus',
+    email: 'plus@example.com',
+    planType: 'plus',
+    windows: [window(10080, 87), window(300, 100)],
+  });
+  assert.deepEqual(windowStatus(plus), ['(Plus)', '5h 100%', 'weekly 87%']);
+});
+
+test('windowStatus shows the lone weekly window of a prolite account', () => {
+  const pro = account({
+    id: 'pro',
+    email: 'pro@example.com',
+    planType: 'prolite',
+    windows: [window(10080, 42)],
+  });
+  assert.deepEqual(windowStatus(pro), ['(Pro 5x)', 'weekly 42%']);
+});
+
+test('windowStatus is empty when no usage was fetched', () => {
+  assert.deepEqual(windowStatus(account({ id: 'new' })), []);
+  assert.deepEqual(windowStatus(undefined), []);
 });

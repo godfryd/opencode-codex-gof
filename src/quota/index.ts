@@ -166,3 +166,25 @@ export function plan(account: Account | undefined): string | undefined {
   if (lower.includes('plus')) return 'Plus';
   return raw;
 }
+
+/**
+ * Status parts for account display rows: the plan in parentheses followed by
+ * one `<window> <percent>%` part per fetched window, sorted shortest first.
+ * Accounts without usage yield an empty array. Covers plans (like prolite)
+ * whose API response carries no 5-hour window at all.
+ */
+export function windowStatus(account: Account | undefined): string[] {
+  const parts: string[] = [];
+  const planName = plan(account);
+  if (planName) parts.push(`(${planName})`);
+  const windows = [...(account?.usage?.windows ?? [])].sort(
+    (a, b) => a.windowMinutes - b.windowMinutes,
+  );
+  for (const w of windows) {
+    const remaining = left(w.usedPercent);
+    if (remaining != null) {
+      parts.push(`${label(w.windowMinutes)} ${Math.round(remaining)}%`);
+    }
+  }
+  return parts;
+}

@@ -1,5 +1,6 @@
 import { promises as fs } from 'node:fs';
 import { PROVIDER_ID } from '../config.js';
+import { identify } from '../oauth/jwt.js';
 import * as authFile from '../auth/file.js';
 import { isPerAccountKey, keyFor, labelFromKey } from '../auth/keys.js';
 import type { Entry, OauthEntry } from '../auth/types.js';
@@ -22,12 +23,40 @@ function idFor(entry: OauthEntry): string {
   );
 }
 
+/**
+ * Resolve an account's email. Prefers the auth-key suffix (`openai/<email>`),
+ * and backfills from the stored access token's JWT claims when the key holds
+ * a bare id (accounts imported before email extraction existed). Never throws
+ * and never touches the network — unparseable tokens simply yield undefined.
+ */
+export function emailFromEntry(
+  key: string,
+  entry: Pick<OauthEntry, 'access' | 'refresh'>,
+): string | undefined {
+  const label = labelFromKey(key);
+  if (label?.includes('@')) return label;
+  try {
+    const { email } = identify({
+      access_token: entry.access,
+      refresh_token: entry.refresh,
+    });
+    return email;
+  } catch {
+    return undefined;
+  }
+}
+
 function accountFromEntry(key: string, entry: OauthEntry): Account {
   const label = labelFromKey(key);
+  const email = emailFromEntry(key, entry);
+  const id = idFor(entry);
   return {
-    id: idFor(entry),
-    email: label?.includes('@') ? label : undefined,
-    label: label && !label.includes('@') ? label : undefined,
+    id,
+    email,
+    // A bare-id key suffix is not a human label — keeping it would shadow
+    // the (possibly backfilled) email in account displays. Preserve only
+    // suffixes that actually name the account differently than its id.
+    label: label && !label.includes('@') && label !== id ? label : undefined,
     refresh: entry.refresh,
     access: entry.access,
     expires: entry.expires,
